@@ -1,9 +1,9 @@
-expname = f9553326a5f4ace0_20
+expname = f9553326a5f4ace0_5
 datadir = ./data/nerf_custom/f9553326a5f4ace0
 dataset_type = custom 
 
 inv = False
-far = 20
+far = 5
 
 no_batching = True
 
