@@ -426,7 +426,7 @@ def config_parser():
                         help='config file path')
     parser.add_argument("--expname", type=str, 
                         help='experiment name')
-    parser.add_argument("--basedir", type=str, default='/data/vision/billf/scratch/ericqian/neural-render/data/viz/nerf', 
+    parser.add_argument("--basedir", type=str, default='/data/vision/billf/scratch/ericqian/neural-render/data/viz/nerf/logs', 
                         help='where to store ckpts and logs')
     parser.add_argument("--datadir", type=str, default='./data/llff/fern', 
                         help='input data directory')
@@ -585,7 +585,7 @@ def train():
 
     elif args.dataset_type == 'custom':
         images, poses, render_poses, hwf, i_split = load_custom_data(args.datadir, args.half_res, args.testskip, args.inv)
-        print('Loaded blender', images.shape, render_poses.shape, hwf, args.datadir)
+        print('Loaded blender', images.shape, render_poses.shape, hwf, args.datadir, render_poses.shape)
         i_train, i_val, i_test = i_split
 
         near = 0.
@@ -621,6 +621,8 @@ def train():
     # Create log dir and copy the config file
     basedir = args.basedir
     expname = args.expname
+    print('basedir', basedir)
+    print('expname', expname)
     os.makedirs(os.path.join(basedir, expname), exist_ok=True)
     f = os.path.join(basedir, expname, 'args.txt')
     with open(f, 'w') as file:

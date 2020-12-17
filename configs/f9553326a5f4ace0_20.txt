@@ -1,10 +1,9 @@
-expname = RE10k_inv_10
-basedir = ./logs
+expname = f9553326a5f4ace0_inv_20
 datadir = ./data/nerf_custom/f9553326a5f4ace0
 dataset_type = custom 
 
 inv = True
-far = 10
+far = 20
 
 no_batching = True
 
