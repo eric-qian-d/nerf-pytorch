@@ -426,7 +426,7 @@ def config_parser():
                         help='config file path')
     parser.add_argument("--expname", type=str, 
                         help='experiment name')
-    parser.add_argument("--basedir", type=str, default='./logs/', 
+    parser.add_argument("--basedir", type=str, default='/data/vision/billf/scratch/ericqian/neural-render/data/viz/nerf', 
                         help='where to store ckpts and logs')
     parser.add_argument("--datadir", type=str, default='./data/llff/fern', 
                         help='input data directory')
@@ -516,6 +516,10 @@ def config_parser():
     parser.add_argument("--llffhold", type=int, default=8, 
                         help='will take every 1/N images as LLFF test set, paper uses 8')
 
+    ## custom flags
+    parser.add_argument("--inv", action='store_true')
+    parser.add_argument('--far', type=int, default=10)
+
     # logging/saving options
     parser.add_argument("--i_print",   type=int, default=100, 
                         help='frequency of console printout and metric loggin')
@@ -580,12 +584,12 @@ def train():
             images = images[...,:3]
 
     elif args.dataset_type == 'custom':
-        images, poses, render_poses, hwf, i_split = load_custom_data(args.datadir, args.half_res, args.testskip)
+        images, poses, render_poses, hwf, i_split = load_custom_data(args.datadir, args.half_res, args.testskip, args.inv)
         print('Loaded blender', images.shape, render_poses.shape, hwf, args.datadir)
         i_train, i_val, i_test = i_split
 
-        near = 0
-        far = 5.
+        near = 0.
+        far = args.far 
 
         images = images[...,:3]
  

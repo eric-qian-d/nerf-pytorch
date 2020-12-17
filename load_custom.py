@@ -34,7 +34,7 @@ def pose_spherical(theta, phi, radius):
     return c2w
 
 
-def load_custom_data(basedir, half_res=False, testskip=1):
+def load_custom_data(basedir, half_res=False, testskip=1, inv=True):
     splits = ['train', 'test', 'test']
     metas = {}
     for s in splits:
@@ -57,7 +57,10 @@ def load_custom_data(basedir, half_res=False, testskip=1):
         for frame in meta['frames'][::skip]:
             fname = os.path.join(basedir, frame['file_path'] + '.png')
             imgs.append(imageio.imread(fname))
-            poses.append(np.linalg.inv(np.array(frame['extrinsics'])))
+            if not inv:
+              poses.append(np.array(frame['extrinsics']))
+            else:
+              poses.append(np.linalg.inv(np.array(frame['extrinsics'])))
             intrinsics = frame['intrinsics']
         imgs = (np.array(imgs) / 255.).astype(np.float32) # keep all 4 channels (RGBA)
         poses = np.array(poses).astype(np.float32)
