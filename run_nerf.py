@@ -17,7 +17,7 @@ from run_nerf_helpers import *
 from load_llff import load_llff_data
 from load_deepvoxels import load_dv_data
 from load_blender import load_blender_data
-
+from load_custom import load_custom_data
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 np.random.seed(0)
@@ -579,6 +579,16 @@ def train():
         else:
             images = images[...,:3]
 
+    elif args.dataset_type == 'custom':
+        images, poses, render_poses, hwf, i_split = load_custom_data(args.datadir, args.half_res, args.testskip)
+        print('Loaded blender', images.shape, render_poses.shape, hwf, args.datadir)
+        i_train, i_val, i_test = i_split
+
+        near = 0
+        far = 5.
+
+        images = images[...,:3]
+ 
     elif args.dataset_type == 'deepvoxels':
 
         images, poses, render_poses, hwf, i_split = load_dv_data(scene=args.shape,
