@@ -1,4 +1,6 @@
 import os
+from os.path import join
+from glob import glob
 import torch
 import numpy as np
 import imageio 
@@ -34,12 +36,9 @@ def pose_spherical(theta, phi, radius):
     return c2w
 
 
-def load_custom_data(basedir, half_res=False, testskip=1, inv=True):
+def load_custom_data(scene, half_res=False, testskip=1, inv=True):
     splits = ['train', 'test', 'test', 'novel']
-    metas = {}
-    for s in splits:
-        with open(os.path.join(basedir, 'transforms_{}.json'.format(s)), 'r') as fp:
-            metas[s] = json.load(fp)
+    data_dir = '/data/vision/billf/scratch/ericqian/neural-render/data/ibrnet/RealEstate10K-subset'
 
     all_imgs = []
     all_poses = []
@@ -47,30 +46,44 @@ def load_custom_data(basedir, half_res=False, testskip=1, inv=True):
     intrinsics = None
     counts = [0]
     for s in splits:
-        meta = metas[s]
         imgs = []
         poses = []
-        if s=='train' or testskip==0 or s=='novel':
-            skip = 1
-        else:
-            skip = testskip
-            
-        for frame in meta['frames'][::skip]:
-            if not inv:
-              pose = (np.array(frame['extrinsics']))
-            else:
-              pose = (np.linalg.inv(np.array(frame['extrinsics'])))
-            if s=='novel':
-              novel_poses.append(pose)
-              continue
-            fname = os.path.join(basedir, frame['file_path'] + '.png')
-            imgs.append(imageio.imread(fname))
-            poses.append(pose)
-            intrinsics = frame['intrinsics']
+        if s == 'train' or s == 'test':
+            s_dir = join(data_dir, 'train')
+            print('s_dir', s_dir)
+            print('img path', join(s_dir, scene))
+            img_paths = glob(join(s_dir, 'frames', scene, '*'))
+            print('img_path', img_paths)
+            img_paths.sort()
+        elif s == 'novel':
+            s_dir = join(data_dir, 'endpoint_interp')
+        calibrations_path = join(s_dir, 'cameras', scene + '.txt')
+        calibrations_file = open(calibrations_path)
+        calibrations_info = calibrations_file.read()
+        calibrations_lines  = calibrations_info.split('\n')
+        calibrations_lines = calibrations_lines[1:] # don't need video link
+        for i, line in enumerate(calibrations_lines):
+            if s == 'test' and i % 10 != 0:
+                continue
 
+            items = line.split(' ')
+            if len(items) < 19:
+             break
+
+            intrinsics = {'fx': float(items[1]), 'fy': float(items[2]), 'cx': float(items[3]), 'cy': float(items[4])}
+            extrinsics = np.array(items[7:]).reshape((3, 4)).astype(np.float)
+
+            w2c = np.eye(4)
+            w2c[:3,:4] = extrinsics
+            c2w = np.linalg.inv(w2c)
+
+            if s != 'novel':
+                imgs.append(imageio.imread(img_paths[i]))
+            poses.append(c2w)
+            
 
         if s == 'novel':
-            novel_poses = np.array(novel_poses).astype(np.float32)
+            novel_poses = np.array(poses).astype(np.float32)
             continue
 
         imgs = (np.array(imgs) / 255.).astype(np.float32) # keep all 4 channels (RGBA)
@@ -92,16 +105,15 @@ def load_custom_data(basedir, half_res=False, testskip=1, inv=True):
     render_poses = torch.tensor(novel_poses).float()
     
     if half_res:
-        H = H//2
-        W = W//2
-        focal = focal/2.
+        W_original = W
+        H = 450
+        W = 800
+        focal = focal/(W_original/W)
 
         imgs_half_res = np.zeros((imgs.shape[0], H, W, 3))
         for i, img in enumerate(imgs):
             res = cv2.resize(img, (W, H), interpolation=cv2.INTER_AREA)
             imgs_half_res[i] =  res
         imgs = imgs_half_res
-        # imgs = tf.image.resize_area(imgs, [400, 400]).numpy()
-
         
     return imgs, poses, render_poses, [H, W, focal], i_split

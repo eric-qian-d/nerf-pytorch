@@ -519,6 +519,7 @@ def config_parser():
     ## custom flags
     parser.add_argument("--inv", action='store_true')
     parser.add_argument('--far', type=int, default=10)
+    parser.add_argument('--scene', type=str)
 
     # logging/saving options
     parser.add_argument("--i_print",   type=int, default=100, 
@@ -584,10 +585,11 @@ def train():
             images = images[...,:3]
 
     elif args.dataset_type == 'custom':
-        images, poses, render_poses, hwf, i_split = load_custom_data(args.datadir, args.half_res, args.testskip, args.inv)
-        print('Loaded blender', images.shape, render_poses.shape, hwf, args.datadir, render_poses.shape)
+        images, poses, render_poses, hwf, i_split = load_custom_data(args.scene, args.half_res, args.testskip, args.inv)
+        print('Loaded RealEstate', images.shape, render_poses.shape, hwf, args.datadir, render_poses.shape)
         i_train, i_val, i_test = i_split
 
+        #use ndc
         near = 0.
         far = args.far 
 
@@ -621,15 +623,22 @@ def train():
         print('Unknown dataset type', args.dataset_type, 'exiting')
         return
 
+    # images are all of the images needed 
+    # poses (c2w) are all of the poses needed, matches images in terms of indexing
+    # i_train, i_val, i_test are the indexes of images/poses that are train, val, test respectively
+    # render_poses (c2w) are the poses to render a novel track video with
+    # hwf is height, width, focal length (not normalized), which are used to construct K if it hasn't been loaded
+
     # Cast intrinsics to right types
     H, W, focal = hwf
     H, W = int(H), int(W)
     hwf = [H, W, focal]
 
     if K is None:
+        modifier = 0
         K = np.array([
-            [focal, 0, 0.5*W],
-            [0, focal, 0.5*H],
+            [focal + modifier * W, 0, 0.5*W],
+            [0, focal + modifier * H, 0.5*H],
             [0, 0, 1]
         ])
 
