@@ -585,12 +585,12 @@ def train():
             images = images[...,:3]
 
     elif args.dataset_type == 'custom':
-        images, poses, render_poses, hwf, i_split = load_custom_data(args.scene, args.half_res, args.testskip, args.inv)
+        images, poses, render_poses, full_original_track_poses, hwf, i_split = load_custom_data(args.scene, args.half_res, args.testskip, args.inv)
         print('Loaded RealEstate', images.shape, render_poses.shape, hwf, args.datadir, render_poses.shape)
         i_train, i_val, i_test = i_split
 
         #use ndc
-        near = 0.
+        near = 0.5
         far = args.far 
 
         images = images[...,:3]
@@ -829,7 +829,14 @@ def train():
             with torch.no_grad():
                 rgbs, disps = render_path(render_poses, hwf, K, args.chunk, render_kwargs_test)
             print('Done, saving', rgbs.shape, disps.shape)
-            moviebase = os.path.join(basedir, expname, '{}_spiral_{:06d}_'.format(expname, i))
+            moviebase = os.path.join(basedir, expname, '{}_renderposes_{:06d}_'.format(expname, i))
+            imageio.mimwrite(moviebase + 'rgb.mp4', to8b(rgbs), fps=30, quality=8)
+            imageio.mimwrite(moviebase + 'disp.mp4', to8b(disps / np.max(disps)), fps=30, quality=8)
+            # Turn on testing mode
+            with torch.no_grad():
+                rgbs, disps = render_path(full_original_track_poses, hwf, K, args.chunk, render_kwargs_test)
+            print('Done, saving', rgbs.shape, disps.shape)
+            moviebase = os.path.join(basedir, expname, '{}_fulloriginal_{:06d}_'.format(expname, i))
             imageio.mimwrite(moviebase + 'rgb.mp4', to8b(rgbs), fps=30, quality=8)
             imageio.mimwrite(moviebase + 'disp.mp4', to8b(disps / np.max(disps)), fps=30, quality=8)
 

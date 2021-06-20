@@ -7,7 +7,7 @@ import imageio
 import json
 import torch.nn.functional as F
 import cv2
-
+from image import image_resize
 
 trans_t = lambda t : torch.Tensor([
     [1,0,0,0],
@@ -37,7 +37,7 @@ def pose_spherical(theta, phi, radius):
 
 
 def load_custom_data(scene, half_res=False, testskip=1, inv=True):
-    splits = ['train', 'test', 'test', 'novel']
+    splits = ['train', 'test', 'test', 'novel', 'full_original_track']
     data_dir = '/data/vision/billf/scratch/ericqian/neural-render/data/ibrnet/RealEstate10K-subset'
 
     all_imgs = []
@@ -48,22 +48,24 @@ def load_custom_data(scene, half_res=False, testskip=1, inv=True):
     for s in splits:
         imgs = []
         poses = []
-        if s == 'train' or s == 'test':
+        if s == 'train' or s == 'test' or s == 'full_original_track':
             s_dir = join(data_dir, 'train')
-            print('s_dir', s_dir)
-            print('img path', join(s_dir, scene))
             img_paths = glob(join(s_dir, 'frames', scene, '*'))
-            print('img_path', img_paths)
             img_paths.sort()
         elif s == 'novel':
             s_dir = join(data_dir, 'endpoint_interp')
+
         calibrations_path = join(s_dir, 'cameras', scene + '.txt')
         calibrations_file = open(calibrations_path)
         calibrations_info = calibrations_file.read()
         calibrations_lines  = calibrations_info.split('\n')
         calibrations_lines = calibrations_lines[1:] # don't need video link
+
         for i, line in enumerate(calibrations_lines):
+            # 90/10 train/test split
             if s == 'test' and i % 10 != 0:
+                continue
+            if s == 'train' and i % 10 == 0:
                 continue
 
             items = line.split(' ')
@@ -76,6 +78,8 @@ def load_custom_data(scene, half_res=False, testskip=1, inv=True):
             w2c = np.eye(4)
             w2c[:3,:4] = extrinsics
             c2w = np.linalg.inv(w2c)
+            #print('c2w', c2w)
+#            c2w = w2c # testing inv
 
             if s != 'novel':
                 imgs.append(imageio.imread(img_paths[i]))
@@ -85,6 +89,8 @@ def load_custom_data(scene, half_res=False, testskip=1, inv=True):
         if s == 'novel':
             novel_poses = np.array(poses).astype(np.float32)
             continue
+        if s == 'full_original_track':
+            full_original_track_poses = np.array(poses).astype(np.float32)
 
         imgs = (np.array(imgs) / 255.).astype(np.float32) # keep all 4 channels (RGBA)
         poses = np.array(poses).astype(np.float32)
@@ -103,6 +109,7 @@ def load_custom_data(scene, half_res=False, testskip=1, inv=True):
     focal = intrinsics['fx'] * W
     
     render_poses = torch.tensor(novel_poses).float()
+    full_original_track_poses = torch.tensor(full_original_track_poses).float()
     
     if half_res:
         W_original = W
@@ -112,8 +119,8 @@ def load_custom_data(scene, half_res=False, testskip=1, inv=True):
 
         imgs_half_res = np.zeros((imgs.shape[0], H, W, 3))
         for i, img in enumerate(imgs):
-            res = cv2.resize(img, (W, H), interpolation=cv2.INTER_AREA)
+            res = image_resize(img, width=W, height=H)
             imgs_half_res[i] =  res
         imgs = imgs_half_res
         
-    return imgs, poses, render_poses, [H, W, focal], i_split
+    return imgs, poses, render_poses, full_original_track_poses, [H, W, focal], i_split
