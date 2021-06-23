@@ -590,7 +590,7 @@ def train():
         i_train, i_val, i_test = i_split
 
         #use ndc
-        near = 0.5
+        near = 0.05
         far = args.far 
 
         images = images[...,:3]

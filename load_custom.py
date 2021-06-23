@@ -111,10 +111,12 @@ def load_custom_data(scene, half_res=False, testskip=1, inv=True):
     render_poses = torch.tensor(novel_poses).float()
     full_original_track_poses = torch.tensor(full_original_track_poses).float()
     
-    if half_res:
+    target_h = 225 if half_res else 450
+    target_w = 400 if half_res else 800
+    if target_h != H or target_w != W:
         W_original = W
-        H = 450
-        W = 800
+        H = target_h
+        W = target_w
         focal = focal/(W_original/W)
 
         imgs_half_res = np.zeros((imgs.shape[0], H, W, 3))
