@@ -165,7 +165,7 @@ def render_path(render_poses, hwf, K, chunk, render_kwargs, gt_imgs=None, savedi
 
         if savedir is not None:
             rgb8 = to8b(rgbs[-1])
-            filename = os.path.join(savedir, '{:03d}.png'.format(i))
+            filename = os.path.join(savedir, '{:04d}.png'.format(i))
             imageio.imwrite(filename, rgb8)
 
 
@@ -586,7 +586,7 @@ def train():
 
     elif args.dataset_type == 'custom':
         images, poses, render_poses, full_original_track_poses, hwf, i_split = load_custom_data(args.scene, args.half_res, args.testskip, args.inv)
-        print('Loaded RealEstate', images.shape, render_poses.shape, hwf, args.datadir, render_poses.shape)
+        print('Loaded RealEstate', images.shape, render_poses.shape, hwf, render_poses.shape)
         i_train, i_val, i_test = i_split
 
         #use ndc
@@ -826,34 +826,39 @@ def train():
 
         if i%args.i_video==0 and i > 0:
             # Turn on testing mode
+            compare_dir = '/data/vision/billf/intrinsic/neural-render/ericqian/results/'
+            novel_compare_dir = os.path.join(compare_dir, args.scene, 'novel', 'nerf')
+            os.makedirs(novel_compare_dir, exist_ok=True)
             with torch.no_grad():
-                rgbs, disps = render_path(render_poses, hwf, K, args.chunk, render_kwargs_test)
-            print('Done, saving', rgbs.shape, disps.shape)
+                rgbs, disps = render_path(render_poses, hwf, K, args.chunk, render_kwargs_test, savedir=novel_compare_dir)
             moviebase = os.path.join(basedir, expname, '{}_renderposes_{:06d}_'.format(expname, i))
             imageio.mimwrite(moviebase + 'rgb.mp4', to8b(rgbs), fps=30, quality=8)
             imageio.mimwrite(moviebase + 'disp.mp4', to8b(disps / np.max(disps)), fps=30, quality=8)
+
+
+            moviebase_compare = os.path.join(compare_dir, args.scene, 'novel')
+            imageio.mimwrite(moviebase_compare + '/nerf_rgb.mp4', to8b(rgbs), fps=30, quality=8)
+            imageio.mimwrite(moviebase_compare + '/nerf_disp.mp4', to8b(disps/np.max(disps)), fps=30, quality=8)
+
             # Turn on testing mode
+            original_compare_dir = os.path.join(compare_dir, args.scene, 'original', 'nerf')
+            os.makedirs(original_compare_dir, exist_ok=True)
             with torch.no_grad():
-                rgbs, disps = render_path(full_original_track_poses, hwf, K, args.chunk, render_kwargs_test)
-            print('Done, saving', rgbs.shape, disps.shape)
+                rgbs, disps = render_path(full_original_track_poses, hwf, K, args.chunk, render_kwargs_test, savedir = original_compare_dir)
             moviebase = os.path.join(basedir, expname, '{}_fulloriginal_{:06d}_'.format(expname, i))
             imageio.mimwrite(moviebase + 'rgb.mp4', to8b(rgbs), fps=30, quality=8)
             imageio.mimwrite(moviebase + 'disp.mp4', to8b(disps / np.max(disps)), fps=30, quality=8)
 
-            # if args.use_viewdirs:
-            #     render_kwargs_test['c2w_staticcam'] = render_poses[0][:3,:4]
-            #     with torch.no_grad():
-            #         rgbs_still, _ = render_path(render_poses, hwf, args.chunk, render_kwargs_test)
-            #     render_kwargs_test['c2w_staticcam'] = None
-            #     imageio.mimwrite(moviebase + 'rgb_still.mp4', to8b(rgbs_still), fps=30, quality=8)
+            moviebase_compare = os.path.join(compare_dir, args.scene, 'original')
+            imageio.mimwrite(moviebase_compare + '/nerf_rgb.mp4', to8b(rgbs), fps=30, quality=8)
+            imageio.mimwrite(moviebase_compare + '/nerf_disp.mp4', to8b(disps/np.max(disps)), fps=30, quality=8)
+
 
         if i%args.i_testset==0 and i > 0:
             testsavedir = os.path.join(basedir, expname, 'testset_{:06d}'.format(i))
             os.makedirs(testsavedir, exist_ok=True)
-            print('test poses shape', poses[i_test].shape)
             with torch.no_grad():
                 render_path(torch.Tensor(poses[i_test]).to(device), hwf, K, args.chunk, render_kwargs_test, gt_imgs=images[i_test], savedir=testsavedir)
-            print('Saved test set')
 
 
     

@@ -61,6 +61,7 @@ def load_custom_data(scene, half_res=False, testskip=1, inv=True):
         calibrations_lines  = calibrations_info.split('\n')
         calibrations_lines = calibrations_lines[1:] # don't need video link
 
+        o = None
         for i, line in enumerate(calibrations_lines):
             # 90/10 train/test split
             if s == 'test' and i % 10 != 0:
@@ -78,13 +79,15 @@ def load_custom_data(scene, half_res=False, testskip=1, inv=True):
             w2c = np.eye(4)
             w2c[:3,:4] = extrinsics
             c2w = np.linalg.inv(w2c)
-            #print('c2w', c2w)
-#            c2w = w2c # testing inv
+            m = np.array([[1,0,0,0], [0,-1,0,0], [0,0,-1,0],[0,0,0,1]])
+            c2w = c2w @ m
+            if o is None:
+                o = c2w
 
             if s != 'novel':
                 imgs.append(imageio.imread(img_paths[i]))
             poses.append(c2w)
-            
+
 
         if s == 'novel':
             novel_poses = np.array(poses).astype(np.float32)
@@ -111,8 +114,8 @@ def load_custom_data(scene, half_res=False, testskip=1, inv=True):
     render_poses = torch.tensor(novel_poses).float()
     full_original_track_poses = torch.tensor(full_original_track_poses).float()
     
-    target_h = 225 if half_res else 450
-    target_w = 400 if half_res else 800
+    target_h = 128 if half_res else 256
+    target_w = 256 if half_res else 512
     if target_h != H or target_w != W:
         W_original = W
         H = target_h
